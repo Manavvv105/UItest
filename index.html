@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Bug Detection</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #008080;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            height: 100vh;
+        }
+
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 20px;
+        }
+
+        .form-container {
+            width: 20%;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        .panel-container {
+            display: flex;
+            flex-wrap: wrap;
+            width: 75%;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .panel {
+            flex: 1 1 calc(50% - 20px);
+            background-color: #333;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            color: white;
+        }
+
+        #errorsFound {
+            color: black; /* Ensures text in Errors Found panel is black */
+        }
+
+        input, button {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .bug {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .btn-llm {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn-llm:hover {
+            background-color: #0056b3;
+        }
+
+        .panel h3 {
+            font-size: 22px;
+            margin-bottom: 15px;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .form-container, .panel-container {
+                width: 90%;
+                margin-bottom: 20px;
+            }
+
+            .panel {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>GitHub Repository Bug Detection</h1>
+
+    <div class="container">
+        <div class="form-container">
+            <form id="repoForm">
+                <label for="repo_url">Enter GitHub repository URL:</label>
+                <input type="text" id="repo_url" name="repo_url" required>
+                <button type="submit">Analyze</button>
+            </form>
+        </div>
+
+        <div class="panel-container">
+            <div class="panel" id="panel1">
+                <h3>Code Preview</h3>
+                <div id="codePreview">
+                    <!-- Code will be inserted here -->
+                </div>
+            </div>
+            <div class="panel" id="panel2">
+                <h3>Fixed Code</h3>
+                <p>Under Maintenance</p>
+            </div>
+
+            <div class="panel" id="panel3">
+                <h3>Errors Found</h3>
+                <div id="errorsFound">
+                    <p>No errors found yet.</p>
+                </div>
+            </div>
+            <div class="panel" id="panel4">
+                <h3>Apply Fixed</h3>
+                <p>Fixed code will be applied here.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('repoForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const repoUrl = document.getElementById('repo_url').value;
+            
+            fetch('/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `repo_url=${repoUrl}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const codePreviewDiv = document.getElementById('codePreview');
+                const errorsFoundDiv = document.getElementById('errorsFound');
+
+                codePreviewDiv.innerHTML = ''; 
+                errorsFoundDiv.innerHTML = ''; 
+
+                if (data.error) {
+                    errorsFoundDiv.innerHTML = `<p class="error">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                if (data.files && Array.isArray(data.files)) {
+                    data.files.forEach(file => {
+                        codePreviewDiv.innerHTML += ` 
+                            <div class="code-file">
+                                <h3>${file.filename}</h3>
+                                <pre>${file.content}</pre>
+                            </div>
+                        `;
+                    });
+                } else {
+                    codePreviewDiv.innerHTML = `<p class="error">No code files found.</p>`;
+                }
+
+                errorsFoundDiv.innerHTML = '<h3>Detected Bugs:</h3>';
+                if (data.bugs && data.bugs.length > 0) {
+                    data.bugs.forEach(bug => {
+                        errorsFoundDiv.innerHTML += `
+                            <div class="bug">
+                                <p><strong>File:</strong> ${bug.file}</p>
+                                <p><strong>Line:</strong> ${bug.line}</p>
+                                <p><strong>Category:</strong> ${bug.category}</p>
+                                <p><strong>Severity:</strong> ${bug.severity}</p>
+                                <p><strong>Description:</strong> ${bug.description}</p>
+                                <button class="btn-llm" onclick='sendBugToLLM(${JSON.stringify(bug)})'>Send to LLM</button>
+                            </div><hr>
+                        `;
+                    });
+                } else {
+                    errorsFoundDiv.innerHTML += `<p>No bugs detected.</p>`;
+                }
+            });
+        });
+
+        function sendBugToLLM(bug) {
+            fetch('/send_to_llm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bug)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Bug sent to LLM for further analysis');
+            });
+        }
+    </script>
+
+</body>
+</html>
